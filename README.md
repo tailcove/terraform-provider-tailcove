@@ -3,7 +3,7 @@
 <p align="center">
   <a href="https://tailcove.dev/docs/terraform">Documentation</a> &nbsp;·&nbsp;
   <a href="https://app.tailcove.dev/register">Get started free</a> &nbsp;·&nbsp;
-  <a href="https://github.com/tailcove/terraform-provider-tailcove/releases">View releases</a> &nbsp;·&nbsp;
+  <a href="https://github.com/tailcove/terraform-provider-tailcove">View on GitHub</a> &nbsp;·&nbsp;
   <a href="https://github.com/tailcove/terraform-provider-tailcove/issues/new/choose">Report a bug</a>
 </p>
 
@@ -17,10 +17,15 @@
 
 ## Install
 
-The provider is not in the Terraform Registry yet (that needs a GPG-signed checksums file). Until it is, download the
-archive for your platform from the [releases page](https://github.com/tailcove/terraform-provider-tailcove/releases),
-check it against `..._SHA256SUMS`, and point Terraform at the binary with a `dev_overrides` block (see
-[Development](#development)) or a filesystem mirror.
+The provider has not been released yet, so it is not in the Terraform Registry and there are no release archives.
+Build it from source (Go 1.25 or newer) and point Terraform at the binary with a `dev_overrides` block (see
+[Development](#development)):
+
+```
+git clone https://github.com/tailcove/terraform-provider-tailcove
+cd terraform-provider-tailcove
+go build -o ./bin/terraform-provider-tailcove .
+```
 
 ```hcl
 terraform {
@@ -123,7 +128,7 @@ provider_installation {
 ## Releasing
 
 A pushed `v*` tag runs `.github/workflows/release.yml`: the tests, then GoReleaser, which attaches the archives and
-`..._SHA256SUMS` to a GitHub release (`v0.1.0-rc.0` is a pre-release). No secret is stored in the repository.
+`..._SHA256SUMS` to a GitHub release (a `-rc` tag makes a pre-release). No secret is stored in the repository.
 
 Publishing in the Terraform Registry additionally needs the checksums file signed with a GPG key whose public half is
 registered in the Registry, which is a secret. That is not set up; until it is, install from a release by hand or
