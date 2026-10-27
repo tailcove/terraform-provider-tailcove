@@ -1,0 +1,6 @@
+/terraform-provider-tailcove
+/dist/
+*.test
+.terraform/
+*.tfstate*
+.terraform.lock.hcl
