@@ -2,9 +2,11 @@ name: release
 
 # A pushed v* tag builds the provider for every platform with GoReleaser and attaches the archives and
 # the SHA256SUMS to a GitHub release (a tag with a prerelease part, v0.1.0-rc.0, is a pre-release).
-# No stored secret: the release uses the workflow's own token.
+# Without the two GPG secrets the release uses only the workflow's own token and the checksums are not signed.
 #
-# Publishing to the Terraform Registry also needs the checksums signed with a GPG key; see README, "Releasing".
+# The Terraform Registry only takes a release whose SHA256SUMS file is signed with a GPG key registered in it. When the repository
+# secrets GPG_PRIVATE_KEY (an ASCII-armoured private key) and GPG_PASSPHRASE exist, the checksums are signed and the signature is
+# attached as ..._SHA256SUMS.sig; see README, "Releasing".
 
 on:
   push:
@@ -37,9 +39,51 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+      # With a signing key, the GoReleaser configuration gets a `signs` block that signs the checksums file; without one it is used as it is.
+      - name: Prepare signing
+        id: signing
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          cp .goreleaser.yml "$RUNNER_TEMP/goreleaser.yml"
+
+          if [ -z "$GPG_PRIVATE_KEY" ]; then
+            echo "No GPG key: the checksums will not be signed."
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          printf '%s' "$GPG_PASSPHRASE" > "$RUNNER_TEMP/gpg-pass"
+          chmod 600 "$RUNNER_TEMP/gpg-pass"
+          printf '%s\n' "$GPG_PRIVATE_KEY" | gpg --batch --import
+          fingerprint="$(gpg --list-secret-keys --with-colons | awk -F: '/^fpr:/ {print $10; exit}')"
+          echo "::add-mask::$fingerprint"
+          echo "GPG_FINGERPRINT=$fingerprint" >> "$GITHUB_ENV"
+          echo "GPG_PASSFILE=$RUNNER_TEMP/gpg-pass" >> "$GITHUB_ENV"
+
+          cat >> "$RUNNER_TEMP/goreleaser.yml" <<'YAML'
+
+          signs:
+            - artifacts: checksum
+              args:
+                - "--batch"
+                - "--pinentry-mode"
+                - "loopback"
+                - "--passphrase-file"
+                - "{{ .Env.GPG_PASSFILE }}"
+                - "--local-user"
+                - "{{ .Env.GPG_FINGERPRINT }}"
+                - "--output"
+                - "${signature}"
+                - "--detach-sign"
+                - "${artifact}"
+          YAML
+          echo "signed=true" >> "$GITHUB_OUTPUT"
+
       - uses: goreleaser/goreleaser-action@v6
         with:
           version: "~> v2"
-          args: release --clean
+          args: release --clean --config ${{ runner.temp }}/goreleaser.yml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
