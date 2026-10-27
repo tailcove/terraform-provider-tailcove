@@ -26,3 +26,31 @@ jobs:
       - run: go vet ./...
       - run: go build ./...
       - run: go test ./... -count=1
+
+  # The AWS module (modules/aws): formatted, valid for the real AWS provider, and its S3 forwarder's own tests.
+  aws-module:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.8"
+          terraform_wrapper: false
+      - name: Formatting
+        run: terraform fmt -check -recursive modules examples
+      - name: Validate the module
+        working-directory: modules/aws
+        run: |
+          terraform init -backend=false -input=false
+          terraform validate
+      - name: Validate the example
+        working-directory: examples/aws
+        run: |
+          terraform init -backend=false -input=false
+          terraform validate
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: The S3 forwarder
+        working-directory: modules/aws/lambda
+        run: python -m unittest test_forwarder -v
