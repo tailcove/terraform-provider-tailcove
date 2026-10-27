@@ -43,18 +43,25 @@ jobs:
         run: |
           terraform init -backend=false -input=false
           terraform validate
-      # The provider is not in the Registry yet, so the example is validated against a build of this repository, through a dev override.
+      # The provider is not in the Registry yet, so the example is validated against a build of this repository, served from a local mirror
+      # (a dev override still makes `terraform init` ask the Registry for it).
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
       - name: Validate the example
         run: |
-          mkdir -p "$RUNNER_TEMP/provider"
-          go build -o "$RUNNER_TEMP/provider/terraform-provider-tailcove" .
+          mirror="$RUNNER_TEMP/mirror/registry.terraform.io/tailcove/tailcove/0.0.1/linux_amd64"
+          mkdir -p "$mirror"
+          go build -o "$mirror/terraform-provider-tailcove_v0.0.1" .
           cat > "$RUNNER_TEMP/terraformrc" <<EOF
           provider_installation {
-            dev_overrides { "tailcove/tailcove" = "$RUNNER_TEMP/provider" }
-            direct {}
+            filesystem_mirror {
+              path    = "$RUNNER_TEMP/mirror"
+              include = ["tailcove/tailcove"]
+            }
+            direct {
+              exclude = ["tailcove/tailcove"]
+            }
           }
           EOF
           export TF_CLI_CONFIG_FILE="$RUNNER_TEMP/terraformrc"
