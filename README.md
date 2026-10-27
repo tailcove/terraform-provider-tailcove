@@ -128,11 +128,23 @@ provider_installation {
 ## Releasing
 
 A pushed `v*` tag runs `.github/workflows/release.yml`: the tests, then GoReleaser, which attaches the archives and
-`..._SHA256SUMS` to a GitHub release (a `-rc` tag makes a pre-release). No secret is stored in the repository.
+`..._SHA256SUMS` to a GitHub release (a `-rc` tag makes a pre-release).
 
-Publishing in the Terraform Registry additionally needs the checksums file signed with a GPG key whose public half is
-registered in the Registry, which is a secret. That is not set up; until it is, install from a release by hand or
-through a filesystem mirror.
+**Signing, for the Terraform Registry.** The Registry only takes a release whose checksums file is signed with a GPG key
+registered in it. The workflow signs it when the repository has two secrets, and leaves it unsigned (as it is today)
+when it has none:
+
+1. Make a key for releases only: `gpg --full-generate-key` (RSA 4096, no expiry or a long one, a passphrase), then
+   `gpg --armor --export-secret-keys <KEYID>` for the private half and `gpg --armor --export <KEYID>` for the public half.
+2. Add the repository secrets `GPG_PRIVATE_KEY` (the whole armoured private key) and `GPG_PASSPHRASE`
+   (Settings, Secrets and variables, Actions). Keep the private key and its passphrase somewhere safe: a lost key means a
+   new key and a new registration.
+3. Sign in to the [Terraform Registry](https://registry.terraform.io) with GitHub, open **Publish, Provider**, choose this
+   repository, and add the **public** key under your namespace's signing keys.
+4. Tag a release. The release gets `..._SHA256SUMS.sig` beside `..._SHA256SUMS`, and the Registry picks it up through its
+   webhook. The provider's source address then works as written: `source = "tailcove/tailcove"`.
+
+Until then, install from a release archive as described under Install.
 
 ## Help and feedback
 
