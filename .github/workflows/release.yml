@@ -87,3 +87,6 @@ jobs:
           args: release --clean --config ${{ runner.temp }}/goreleaser.yml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # The tag that triggered this run. Without it GoReleaser takes the first tag on the commit, so a release candidate and the stable
+          # release made from the same commit (v0.1.0-rc.0 and v0.1.0) would both build as the candidate.
+          GORELEASER_CURRENT_TAG: ${{ github.ref_name }}
