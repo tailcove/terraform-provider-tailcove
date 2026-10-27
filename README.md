@@ -1,6 +1,26 @@
-# Terraform provider for Tailcove
+<a href="https://tailcove.dev/docs/terraform"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tailcove/.github/main/profile/assets/packages/terraform-dark.svg"><source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tailcove/.github/main/profile/assets/packages/terraform-light.svg"><img alt="terraform-provider-tailcove: Tailcove for Terraform. Version, runtime support, size and license." src="https://raw.githubusercontent.com/tailcove/.github/main/profile/assets/packages/terraform-dark.svg" width="100%"></picture></a>
 
-Manage Tailcove sources, uptime monitors and alerts as code.
+<p align="center">
+  <a href="https://tailcove.dev/docs/terraform">Documentation</a> &nbsp;·&nbsp;
+  <a href="https://app.tailcove.dev/register">Get started free</a> &nbsp;·&nbsp;
+  <a href="https://github.com/tailcove/terraform-provider-tailcove/releases">View releases</a> &nbsp;·&nbsp;
+  <a href="https://github.com/tailcove/terraform-provider-tailcove/issues/new/choose">Report a bug</a>
+</p>
+
+<h3 align="center">Manage Tailcove sources, monitors and alerts as code.</h3>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tailcove/.github/main/profile/assets/packages/features-terraform-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tailcove/.github/main/profile/assets/packages/features-terraform-light.svg">
+  <img alt="terraform-provider-tailcove features" src="https://raw.githubusercontent.com/tailcove/.github/main/profile/assets/packages/features-terraform-dark.svg" width="100%">
+</picture>
+
+## Install
+
+The provider is not in the Terraform Registry yet (that needs a GPG-signed checksums file). Until it is, download the
+archive for your platform from the [releases page](https://github.com/tailcove/terraform-provider-tailcove/releases),
+check it against `..._SHA256SUMS`, and point Terraform at the binary with a `dev_overrides` block (see
+[Development](#development)) or a filesystem mirror.
 
 ```hcl
 terraform {
@@ -10,7 +30,11 @@ terraform {
 }
 
 provider "tailcove" {}   # token from TAILCOVE_TOKEN
+```
 
+## Quick start
+
+```hcl
 resource "tailcove_source" "web" {
   name = "web"
 }
@@ -30,10 +54,8 @@ A full example is in [`examples/complete`](examples/complete/main.tf).
 
 ## Provider
 
-| Argument   | Environment variable | Default                  |
-| ---------- | -------------------- | ------------------------ |
-| `endpoint` | `TAILCOVE_ENDPOINT`  | `https://app.tailcove.dev` |
-| `token`    | `TAILCOVE_TOKEN`     | none (required)          |
+- `endpoint`: environment variable `TAILCOVE_ENDPOINT`, default `https://app.tailcove.dev`.
+- `token`: environment variable `TAILCOVE_TOKEN`, required.
 
 The token is an API token from **Settings, API tokens**. It acts for the team it was made for, as its owner, so one
 provider configuration manages one team (use `alias` for more). Give it only the abilities the configuration uses:
@@ -43,14 +65,12 @@ sources needs `sources:read` as well.
 
 ## Resources and data sources
 
-| Name                            | Kind        | Import id            |
-| ------------------------------- | ----------- | -------------------- |
-| `tailcove_source`               | resource    | `id`                 |
-| `tailcove_monitor`              | resource    | `id`                 |
-| `tailcove_alert`                | resource    | `source_id/alert_id` |
-| `tailcove_source`               | data source | by `id` or `name`    |
-| `tailcove_escalation_policy`    | data source | by `name`            |
-| `tailcove_oncall_schedule`      | data source | by `name`            |
+- `tailcove_source`: resource, imported by `id`.
+- `tailcove_monitor`: resource, imported by `id`.
+- `tailcove_alert`: resource, imported by `source_id/alert_id`.
+- `tailcove_source`: data source, found by `id` or `name`.
+- `tailcove_escalation_policy`: data source, found by `name`.
+- `tailcove_oncall_schedule`: data source, found by `name`.
 
 Every attribute is described in the schema (`terraform providers schema -json`, or the editor's hover help).
 
@@ -109,6 +129,25 @@ Publishing in the Terraform Registry additionally needs the checksums file signe
 registered in the Registry, which is a secret. That is not set up; until it is, install from a release by hand or
 through a filesystem mirror.
 
-## License
+## Help and feedback
 
-MIT. Built by AKCybex.
+Something wrong or missing? [Open an issue](https://github.com/tailcove/terraform-provider-tailcove/issues/new/choose).
+
+<br>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tailcove/.github/main/profile/assets/packages/footer-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tailcove/.github/main/profile/assets/packages/footer-light.svg">
+  <img alt="Tailcove. Built by AKCybex." src="https://raw.githubusercontent.com/tailcove/.github/main/profile/assets/packages/footer-dark.svg" width="100%">
+</picture>
+
+<p align="center">
+  <a href="https://tailcove.dev/docs/terraform">Documentation</a> &nbsp;·&nbsp;
+  <a href="https://app.tailcove.dev/register">Get started free</a> &nbsp;·&nbsp;
+  <a href="https://github.com/tailcove/terraform-provider-tailcove/issues/new/choose">Report a bug</a> &nbsp;·&nbsp;
+  <a href="LICENSE">MIT License</a>
+</p>
+
+<p align="center">
+  <sub>More Tailcove libraries: <a href="https://github.com/tailcove/laravel">Laravel</a> &nbsp;·&nbsp; <a href="https://github.com/tailcove/node">Node.js</a> &nbsp;·&nbsp; <a href="https://github.com/tailcove/python">Python</a> &nbsp;·&nbsp; <a href="https://github.com/tailcove/browser">Browser</a> &nbsp;·&nbsp; <a href="https://github.com/tailcove/agent">Agent</a></sub>
+</p>
