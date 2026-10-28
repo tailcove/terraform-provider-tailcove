@@ -17,9 +17,12 @@
 
 ## Install
 
-The provider has not been released yet, so it is not in the Terraform Registry and there are no release archives.
-Build it from source (Go 1.25 or newer) and point Terraform at the binary with a `dev_overrides` block (see
-[Development](#development)):
+The provider is not in the Terraform Registry yet, so Terraform needs a local copy of the binary.
+Download the zip for your platform from the [latest release](https://github.com/tailcove/terraform-provider-tailcove/releases/latest),
+check it against `terraform-provider-tailcove_<version>_SHA256SUMS`, unzip it, and point Terraform at the binary with a
+`dev_overrides` block (see [Development](#development)).
+
+To build from source instead (Go 1.25 or newer):
 
 ```
 git clone https://github.com/tailcove/terraform-provider-tailcove
