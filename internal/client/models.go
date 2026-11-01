@@ -39,6 +39,7 @@ type Monitor struct {
 	RequestBody        *string        `json:"requestBody"`
 	IntervalSeconds    *int64         `json:"intervalSeconds"`
 	GraceSeconds       *int64         `json:"graceSeconds"`
+	MaxRunSeconds      *int64         `json:"maxRunSeconds"`
 	PingURL            *string        `json:"pingUrl"`
 	TimeoutMs          *int64         `json:"timeoutMs"`
 	IsActive           bool           `json:"isActive"`

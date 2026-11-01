@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
@@ -193,6 +194,68 @@ resource "tailcove_monitor" "site" {
 	headers, _ := sent["request_headers"].([]any)
 	if len(headers) != 1 || headers[0].(map[string]any)["name"] != "X-Token" || headers[0].(map[string]any)["value"] != "s3cret" {
 		t.Errorf("request_headers sent = %v", sent["request_headers"])
+	}
+}
+
+func TestMonitorHeartbeatRunLimit(t *testing.T) {
+	preCheck(t)
+	api, url := newFakeAPI(t)
+
+	cfg := func(extra string) string {
+		return providerConfig(url) + fmt.Sprintf(`
+resource "tailcove_monitor" "job" {
+  name             = "nightly backup"
+  type             = "heartbeat"
+  interval_seconds = 86400
+  grace_seconds    = 3600
+  %s
+  channels = {
+    mail = { to = ["ops@example.com"] }
+  }
+}`, extra)
+	}
+
+	resource.UnitTest(t, resource.TestCase{
+		ProtoV6ProviderFactories: factories,
+		Steps: []resource.TestStep{
+			{
+				Config: cfg("max_run_seconds = 900"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("tailcove_monitor.job", "type", "heartbeat"),
+					resource.TestCheckResourceAttr("tailcove_monitor.job", "grace_seconds", "3600"),
+					resource.TestCheckResourceAttr("tailcove_monitor.job", "max_run_seconds", "900"),
+				),
+			},
+			{
+				// The same configuration plans no change: the limit comes back from the API as it was sent.
+				Config:   cfg("max_run_seconds = 900"),
+				PlanOnly: true,
+			},
+			{
+				// Taking the limit out of the configuration turns it off on the server, it does not keep the old one.
+				Config: cfg(""),
+				Check:  resource.TestCheckNoResourceAttr("tailcove_monitor.job", "max_run_seconds"),
+			},
+			{
+				ResourceName:      "tailcove_monitor.job",
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+
+	if got := api.bodies["POST /api/v1/monitors"]["max_run_seconds"]; got != float64(900) {
+		t.Errorf("create sent max_run_seconds = %v, want 900", got)
+	}
+
+	var update map[string]any
+	for key, body := range api.bodies {
+		if strings.HasPrefix(key, "PUT /api/v1/monitors/") {
+			update = body
+		}
+	}
+	if value, present := update["max_run_seconds"]; !present || value != nil {
+		t.Errorf("removing the limit sent max_run_seconds = %v (present: %v), want an explicit null", value, present)
 	}
 }
 
