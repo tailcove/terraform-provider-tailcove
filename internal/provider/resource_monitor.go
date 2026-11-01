@@ -45,6 +45,7 @@ type monitorModel struct {
 	IntervalSeconds    types.Int64    `tfsdk:"interval_seconds"`
 	TimeoutMs          types.Int64    `tfsdk:"timeout_ms"`
 	GraceSeconds       types.Int64    `tfsdk:"grace_seconds"`
+	MaxRunSeconds      types.Int64    `tfsdk:"max_run_seconds"`
 	RequestHeaders     types.Map      `tfsdk:"request_headers"`
 	RequestBody        types.String   `tfsdk:"request_body"`
 	Regions            types.Set      `tfsdk:"regions"`
@@ -95,6 +96,7 @@ func (r *monitorResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 			"interval_seconds": optIntA("Seconds between checks (heartbeat: how often the job is expected to ping). The plan sets the shortest."),
 			"timeout_ms":       optIntA("http, tcp, icmp, ssl: milliseconds to wait, 1000 to 30000."),
 			"grace_seconds":    optIntA("heartbeat: how much longer than the interval to wait before calling it down."),
+			"max_run_seconds":  optIntA("heartbeat: how long one run may take, 10 to 86400 seconds. A run that called the `/start` URL and has not finished in this time is down (a hung job). Leave it out to time nothing."),
 			"request_headers": schema.MapAttribute{
 				Optional:    true,
 				Sensitive:   true,
@@ -154,6 +156,7 @@ func (m monitorModel) body() map[string]any {
 		"interval_seconds":     optInt(m.IntervalSeconds),
 		"timeout_ms":           optInt(m.TimeoutMs),
 		"grace_seconds":        optInt(m.GraceSeconds),
+		"max_run_seconds":      optInt(m.MaxRunSeconds),
 		"request_body":         optStr(m.RequestBody),
 		"min_regions_down":     optInt(m.MinRegionsDown),
 		"is_active":            optBool(m.IsActive),
@@ -213,6 +216,7 @@ func (m *monitorModel) apply(a *client.Monitor, importing bool) {
 	m.IntervalSeconds = refInt(m.IntervalSeconds, a.IntervalSeconds, importing)
 	m.TimeoutMs = refInt(m.TimeoutMs, a.TimeoutMs, importing)
 	m.GraceSeconds = refInt(m.GraceSeconds, a.GraceSeconds, importing)
+	m.MaxRunSeconds = refInt(m.MaxRunSeconds, a.MaxRunSeconds, importing)
 	m.RequestBody = refStr(m.RequestBody, a.RequestBody, importing)
 	m.MinRegionsDown = refInt(m.MinRegionsDown, a.MinRegionsDown, importing)
 	m.EscalationPolicyID = refInt(m.EscalationPolicyID, a.EscalationPolicyID, importing)
