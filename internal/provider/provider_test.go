@@ -98,7 +98,7 @@ resource "tailcove_source" "web" {
 		},
 	})
 
-	if got := api.bodies["PUT /api/v1/sources/101"]; got == nil || got["platform"] != nil {
+	if got := api.bodies["PUT /api/v1/sources/src_00000000000000000000000101"]; got == nil || got["platform"] != nil {
 		t.Errorf("the last PUT should carry platform: null, got %v", got)
 	}
 }
@@ -116,7 +116,7 @@ resource "tailcove_source" "web" { name = "web" }`
 			{
 				PreConfig: func() {
 					api.mu.Lock()
-					api.sources = map[int64]map[string]any{}
+					api.sources = map[string]map[string]any{}
 					api.mu.Unlock()
 				},
 				Config: cfg,
@@ -384,22 +384,22 @@ resource "tailcove_alert" "errors" {
 func TestDataSources(t *testing.T) {
 	preCheck(t)
 	api, url := newFakeAPI(t)
-	api.sources[7] = map[string]any{"name": "existing", "platform": "nginx", "retention_days": 7}
+	api.sources["src_01jbx5q8k7m3n2p4r6s8t0v1w3"] = map[string]any{"name": "existing", "platform": "nginx", "retention_days": 7}
 
 	resource.UnitTest(t, resource.TestCase{
 		ProtoV6ProviderFactories: factories,
 		Steps: []resource.TestStep{{
 			Config: providerConfig(url) + `
 data "tailcove_source" "by_name" { name = "existing" }
-data "tailcove_source" "by_id"   { id = 7 }
+data "tailcove_source" "by_id"   { id = "src_01jbx5q8k7m3n2p4r6s8t0v1w3" }
 data "tailcove_escalation_policy" "p" { name = "Primary on-call" }
 data "tailcove_oncall_schedule" "s"   { name = "Weekdays" }
 `,
 			Check: resource.ComposeAggregateTestCheckFunc(
-				resource.TestCheckResourceAttr("data.tailcove_source.by_name", "id", "7"),
+				resource.TestCheckResourceAttr("data.tailcove_source.by_name", "id", "src_01jbx5q8k7m3n2p4r6s8t0v1w3"),
 				resource.TestCheckResourceAttr("data.tailcove_source.by_name", "platform", "nginx"),
 				resource.TestCheckResourceAttr("data.tailcove_source.by_id", "name", "existing"),
-				resource.TestCheckResourceAttr("data.tailcove_escalation_policy.p", "id", "5"),
+				resource.TestCheckResourceAttr("data.tailcove_escalation_policy.p", "id", fakePolicyID),
 				resource.TestCheckResourceAttr("data.tailcove_oncall_schedule.s", "time_zone", "Europe/Berlin"),
 			),
 		}},

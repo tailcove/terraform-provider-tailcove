@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"sort"
 	"strconv"
 	"strings"
@@ -180,5 +179,3 @@ func send[T any](ctx context.Context, c *Client, method, path string, body map[s
 	err := c.do(ctx, method, path, body, &e)
 	return e.Data, err
 }
-
-func id(n int64) string { return url.PathEscape(strconv.FormatInt(n, 10)) }
