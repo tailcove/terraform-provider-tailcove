@@ -2,7 +2,7 @@ package provider
 
 import (
 	"fmt"
-	"strconv"
+	"regexp"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -88,12 +88,16 @@ func intOrNull(api *int64) types.Int64 {
 	return types.Int64Value(*api)
 }
 
-func parseID(s string) (int64, error) {
-	n, err := strconv.ParseInt(strings.TrimSpace(s), 10, 64)
-	if err != nil || n < 1 {
-		return 0, fmt.Errorf("%q is not a Tailcove id", s)
+// idRe is the shape of a Tailcove id: a short prefix for what the thing is and a lowercase ULID,
+// for example src_01jbx5q8k7m3n2p4r6s8t0v1w3. Ids are opaque: the provider never reads anything into them.
+var idRe = regexp.MustCompile(`^[a-z]{1,8}_[0-9a-hjkmnp-tv-z]{26}$`)
+
+func parseID(s string) (string, error) {
+	s = strings.TrimSpace(s)
+	if !idRe.MatchString(s) {
+		return "", fmt.Errorf("%q is not a Tailcove id (expected a prefix and a ULID, such as src_01jbx5q8k7m3n2p4r6s8t0v1w3)", s)
 	}
-	return n, nil
+	return s, nil
 }
 
 func addAPIError(d *diag.Diagnostics, summary string, err error) {

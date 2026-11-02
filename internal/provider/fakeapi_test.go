@@ -2,26 +2,27 @@ package provider_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
-	"strconv"
 	"strings"
 	"sync"
 	"testing"
 )
 
 // fakeAPI is a small in-memory stand-in for the Tailcove /api/v1 write API. It keeps what the real API
-// does that matters to the provider: ids, camelCase responses, the ingest token only in a create's response,
-// secrets that never come back, defaults, 404 for what is gone and a 422 for a bad request.
+// does that matters to the provider: opaque string ids (a prefix and a ULID), camelCase responses, the ingest
+// token only in a create's response, secrets that never come back, defaults, 404 for what is gone and a 422
+// for a bad request.
 type fakeAPI struct {
 	t  *testing.T
 	mu sync.Mutex
 
-	nextID   int64
-	sources  map[int64]map[string]any
-	monitors map[int64]map[string]any
-	alerts   map[int64]map[string]any // by alert id; the source is in the body
+	nextID   int
+	sources  map[string]map[string]any
+	monitors map[string]map[string]any
+	alerts   map[string]map[string]any // by alert id; the source is in the body
 	keys     map[string]bool
 
 	// requests records "METHOD path" in order, so a test can see what the provider sent.
@@ -33,17 +34,28 @@ type fakeAPI struct {
 	schedules []map[string]any
 }
 
+const (
+	fakePolicyID   = "pol_01jbx5qc0a1b2c3d4e5f6g7h8j"
+	fakeScheduleID = "sch_01jbx5qd0a1b2c3d4e5f6g7h8j"
+)
+
 func newFakeAPI(t *testing.T) (*fakeAPI, string) {
 	f := &fakeAPI{
 		t: t, nextID: 100,
-		sources: map[int64]map[string]any{}, monitors: map[int64]map[string]any{}, alerts: map[int64]map[string]any{},
+		sources: map[string]map[string]any{}, monitors: map[string]map[string]any{}, alerts: map[string]map[string]any{},
 		keys: map[string]bool{}, bodies: map[string]map[string]any{},
-		policies:  []map[string]any{{"id": 5, "name": "Primary on-call", "steps": 2, "repeatCount": 1}},
-		schedules: []map[string]any{{"id": 8, "name": "Weekdays", "timeZone": "Europe/Berlin"}},
+		policies:  []map[string]any{{"id": fakePolicyID, "name": "Primary on-call", "steps": 2, "repeatCount": 1}},
+		schedules: []map[string]any{{"id": fakeScheduleID, "name": "Weekdays", "timeZone": "Europe/Berlin"}},
 	}
 	srv := httptest.NewServer(f)
 	t.Cleanup(srv.Close)
 	return f, srv.URL
+}
+
+// newID mints an id as the API does: a prefix for the kind of thing and 26 ULID characters, here a counter padded out.
+func (f *fakeAPI) newID(prefix string) string {
+	f.nextID++
+	return fmt.Sprintf("%s_%026d", prefix, f.nextID)
 }
 
 var camelRe = regexp.MustCompile(`_([a-z])`)
@@ -75,7 +87,7 @@ func maskChannels(in any) any {
 	return out
 }
 
-func present(id int64, body map[string]any, defaults map[string]any) map[string]any {
+func present(id string, body map[string]any, defaults map[string]any) map[string]any {
 	out := map[string]any{"id": id}
 	for k, v := range defaults {
 		out[camel(k)] = v
@@ -111,7 +123,7 @@ func (f *fakeAPI) invalid(w http.ResponseWriter, field, msg string) {
 	f.writeJSON(w, 422, map[string]any{"message": "The given data was invalid.", "errors": map[string][]string{field: {msg}}})
 }
 
-var routeRe = regexp.MustCompile(`^/api/v1/(sources|monitors|oncall)(?:/(\d+|policies|schedules))?(?:/(alerts))?(?:/(\d+))?$`)
+var routeRe = regexp.MustCompile(`^/api/v1/(sources|monitors|oncall)(?:/([a-z]+_[a-z0-9]+|policies|schedules))?(?:/(alerts))?(?:/([a-z]+_[a-z0-9]+))?$`)
 
 func (f *fakeAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	f.mu.Lock()
@@ -142,7 +154,6 @@ func (f *fakeAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	resource, seg, alerts, alertSeg := m[1], m[2], m[3], m[4]
-	id, _ := strconv.ParseInt(seg, 10, 64)
 
 	switch {
 	case resource == "oncall" && seg == "policies":
@@ -150,38 +161,38 @@ func (f *fakeAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case resource == "oncall" && seg == "schedules":
 		f.writeJSON(w, 200, map[string]any{"data": f.schedules})
 	case resource == "sources" && alerts != "":
-		f.alertRoute(w, r, id, alertSeg, body)
+		f.alertRoute(w, r, seg, alertSeg, body)
 	case resource == "sources":
-		f.sourceRoute(w, r, seg, id, body)
+		f.sourceRoute(w, r, seg, body)
 	case resource == "monitors":
-		f.monitorRoute(w, r, seg, id, body)
+		f.monitorRoute(w, r, seg, body)
 	default:
 		f.writeJSON(w, 404, nil)
 	}
 }
 
-func (f *fakeAPI) sourceRoute(w http.ResponseWriter, r *http.Request, seg string, id int64, body map[string]any) {
+func (f *fakeAPI) sourceRoute(w http.ResponseWriter, r *http.Request, id string, body map[string]any) {
 	switch {
-	case r.Method == http.MethodGet && seg == "":
+	case r.Method == http.MethodGet && id == "":
 		list := []any{}
 		for sid, s := range f.sources {
 			list = append(list, present(sid, s, map[string]any{"retention_days": 3}))
 		}
 		f.writeJSON(w, 200, map[string]any{"data": list})
-	case r.Method == http.MethodPost && seg == "":
+	case r.Method == http.MethodPost && id == "":
 		if name, _ := body["name"].(string); name == "" {
 			f.invalid(w, "name", "The name field is required.")
 			return
 		}
-		f.nextID++
 		if body["retention_days"] == nil {
 			body["retention_days"] = 3
 		}
-		f.sources[f.nextID] = body
-		out := present(f.nextID, body, nil)
-		out["ingestToken"] = "tok_" + strconv.FormatInt(f.nextID, 10)
+		created := f.newID("src")
+		f.sources[created] = body
+		out := present(created, body, nil)
+		out["ingestToken"] = "tok_" + strings.TrimPrefix(created, "src_")
 		f.writeJSON(w, 201, map[string]any{"data": out})
-	case seg != "":
+	case id != "":
 		s, ok := f.sources[id]
 		if !ok {
 			f.writeJSON(w, 404, nil)
@@ -205,18 +216,18 @@ func (f *fakeAPI) sourceRoute(w http.ResponseWriter, r *http.Request, seg string
 	}
 }
 
-func (f *fakeAPI) monitorRoute(w http.ResponseWriter, r *http.Request, seg string, id int64, body map[string]any) {
+func (f *fakeAPI) monitorRoute(w http.ResponseWriter, r *http.Request, id string, body map[string]any) {
 	defaults := map[string]any{"is_active": true, "create_incident": false, "state": "unknown"}
 	switch {
-	case r.Method == http.MethodPost && seg == "":
+	case r.Method == http.MethodPost && id == "":
 		if t, _ := body["type"].(string); (t == "" || t == "http") && body["url"] == nil {
 			f.invalid(w, "url", "The url field is required.")
 			return
 		}
-		f.nextID++
-		f.monitors[f.nextID] = body
-		f.writeJSON(w, 201, map[string]any{"data": present(f.nextID, body, defaults)})
-	case seg != "":
+		created := f.newID("mon")
+		f.monitors[created] = body
+		f.writeJSON(w, 201, map[string]any{"data": present(created, body, defaults)})
+	case id != "":
 		mon, ok := f.monitors[id]
 		if !ok {
 			f.writeJSON(w, 404, nil)
@@ -237,22 +248,21 @@ func (f *fakeAPI) monitorRoute(w http.ResponseWriter, r *http.Request, seg strin
 	}
 }
 
-func (f *fakeAPI) alertRoute(w http.ResponseWriter, r *http.Request, sourceID int64, seg string, body map[string]any) {
+func (f *fakeAPI) alertRoute(w http.ResponseWriter, r *http.Request, sourceID string, id string, body map[string]any) {
 	if _, ok := f.sources[sourceID]; !ok {
 		f.writeJSON(w, 404, nil)
 		return
 	}
-	defaults := func(sid int64) map[string]any {
+	defaults := func(sid string) map[string]any {
 		return map[string]any{"source_id": sid, "type": "log", "no_data": false, "is_active": true, "create_incident": false}
 	}
 	switch {
-	case r.Method == http.MethodPost && seg == "":
-		f.nextID++
+	case r.Method == http.MethodPost && id == "":
+		created := f.newID("alr")
 		body["source_id"] = sourceID
-		f.alerts[f.nextID] = body
-		f.writeJSON(w, 201, map[string]any{"data": present(f.nextID, body, defaults(sourceID))})
-	case seg != "":
-		id, _ := strconv.ParseInt(seg, 10, 64)
+		f.alerts[created] = body
+		f.writeJSON(w, 201, map[string]any{"data": present(created, body, defaults(sourceID))})
+	case id != "":
 		a, ok := f.alerts[id]
 		if !ok || a["source_id"] != any(sourceID) {
 			f.writeJSON(w, 404, nil)
