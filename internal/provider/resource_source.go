@@ -26,11 +26,11 @@ func NewSourceResource() resource.Resource { return &sourceResource{} }
 type sourceResource struct{ client *client.Client }
 
 type sourceModel struct {
-	ID            types.Int64  `tfsdk:"id"`
+	ID            types.String `tfsdk:"id"`
 	Name          types.String `tfsdk:"name"`
 	Platform      types.String `tfsdk:"platform"`
 	RetentionDays types.Int64  `tfsdk:"retention_days"`
-	ClientGroupID types.Int64  `tfsdk:"client_group_id"`
+	ClientGroupID types.String `tfsdk:"client_group_id"`
 	IngestToken   types.String `tfsdk:"ingest_token"`
 }
 
@@ -42,9 +42,10 @@ func (r *sourceResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 	resp.Schema = schema.Schema{
 		Description: "A log source. The token needs `sources:write`. The plan's source limit applies.",
 		Attributes: map[string]schema.Attribute{
-			"id": schema.Int64Attribute{
+			"id": schema.StringAttribute{
 				Computed:      true,
-				PlanModifiers: []planmodifier.Int64{int64planmodifier.UseStateForUnknown()},
+				Description:   "The source's id, an opaque string (`src_…`).",
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"name": schema.StringAttribute{Required: true, Description: "The source's name."},
 			"platform": schema.StringAttribute{
@@ -57,9 +58,9 @@ func (r *sourceResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 				Description:   "Days the logs are kept; at most the plan's. Defaults to the plan's retention.",
 				PlanModifiers: []planmodifier.Int64{int64planmodifier.UseStateForUnknown()},
 			},
-			"client_group_id": schema.Int64Attribute{
+			"client_group_id": schema.StringAttribute{
 				Optional:    true,
-				Description: "The client group the source belongs to.",
+				Description: "The id of the client group the source belongs to (`cg_…`).",
 			},
 			"ingest_token": schema.StringAttribute{
 				Computed:      true,
@@ -82,17 +83,17 @@ func (m sourceModel) body() map[string]any {
 		"name":            m.Name.ValueString(),
 		"platform":        optStr(m.Platform),
 		"retention_days":  optInt(m.RetentionDays),
-		"client_group_id": optInt(m.ClientGroupID),
+		"client_group_id": optStr(m.ClientGroupID),
 	}
 }
 
 // apply puts what the API says into the model.
 func (m *sourceModel) apply(s *client.Source, importing bool) {
-	m.ID = types.Int64Value(s.ID)
+	m.ID = types.StringValue(s.ID)
 	m.Name = types.StringValue(s.Name)
 	m.Platform = refStr(m.Platform, s.Platform, importing)
 	m.RetentionDays = types.Int64Value(s.RetentionDays)
-	m.ClientGroupID = refInt(m.ClientGroupID, s.ClientGroupID, importing)
+	m.ClientGroupID = refStr(m.ClientGroupID, s.ClientGroupID, importing)
 	if s.IngestToken != "" {
 		m.IngestToken = types.StringValue(s.IngestToken)
 	} else if m.IngestToken.IsUnknown() {
@@ -123,7 +124,7 @@ func (r *sourceResource) Read(ctx context.Context, req resource.ReadRequest, res
 		return
 	}
 
-	s, err := r.client.GetSource(ctx, state.ID.ValueInt64())
+	s, err := r.client.GetSource(ctx, state.ID.ValueString())
 	if errors.Is(err, client.ErrNotFound) {
 		resp.State.RemoveResource(ctx)
 		return
@@ -143,7 +144,7 @@ func (r *sourceResource) Update(ctx context.Context, req resource.UpdateRequest,
 		return
 	}
 
-	s, err := r.client.UpdateSource(ctx, plan.ID.ValueInt64(), plan.body())
+	s, err := r.client.UpdateSource(ctx, plan.ID.ValueString(), plan.body())
 	if err != nil {
 		addAPIError(&resp.Diagnostics, "Could not update the source", err)
 		return
@@ -160,7 +161,7 @@ func (r *sourceResource) Delete(ctx context.Context, req resource.DeleteRequest,
 	}
 
 	// Deleting a source deletes its logs and alerts: only owners and admins may, and so may their tokens.
-	if err := r.client.DeleteSource(ctx, state.ID.ValueInt64()); err != nil && !errors.Is(err, client.ErrNotFound) {
+	if err := r.client.DeleteSource(ctx, state.ID.ValueString()); err != nil && !errors.Is(err, client.ErrNotFound) {
 		addAPIError(&resp.Diagnostics, "Could not delete the source", err)
 	}
 }

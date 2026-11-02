@@ -10,7 +10,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -30,7 +29,7 @@ func NewMonitorResource() resource.Resource { return &monitorResource{} }
 type monitorResource struct{ client *client.Client }
 
 type monitorModel struct {
-	ID                 types.Int64    `tfsdk:"id"`
+	ID                 types.String   `tfsdk:"id"`
 	Name               types.String   `tfsdk:"name"`
 	Type               types.String   `tfsdk:"type"`
 	URL                types.String   `tfsdk:"url"`
@@ -52,8 +51,8 @@ type monitorModel struct {
 	MinRegionsDown     types.Int64    `tfsdk:"min_regions_down"`
 	IsActive           types.Bool     `tfsdk:"is_active"`
 	CreateIncident     types.Bool     `tfsdk:"create_incident"`
-	EscalationPolicyID types.Int64    `tfsdk:"escalation_policy_id"`
-	ClientGroupID      types.Int64    `tfsdk:"client_group_id"`
+	EscalationPolicyID types.String   `tfsdk:"escalation_policy_id"`
+	ClientGroupID      types.String   `tfsdk:"client_group_id"`
 	Channels           *channelsModel `tfsdk:"channels"`
 	State              types.String   `tfsdk:"state"`
 	PingURL            types.String   `tfsdk:"ping_url"`
@@ -76,7 +75,7 @@ func (r *monitorResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 		Description: "An uptime monitor. The token needs `monitors:write`. Which attributes a monitor needs depends on its `type`; " +
 			"Tailcove checks them when the monitor is saved and the message names the attribute. The plan limits the number of monitors, the shortest interval and the number of regions.",
 		Attributes: map[string]schema.Attribute{
-			"id":   schema.Int64Attribute{Computed: true, PlanModifiers: []planmodifier.Int64{int64planmodifier.UseStateForUnknown()}},
+			"id":   schema.StringAttribute{Computed: true, Description: "The monitor's id, an opaque string (`mon_…`).", PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()}},
 			"name": schema.StringAttribute{Required: true, Description: "The monitor's name."},
 			"type": schema.StringAttribute{
 				Optional:    true,
@@ -118,8 +117,8 @@ func (r *monitorResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Optional: true, Computed: true, Default: booldefault.StaticBool(false),
 				Description: "Open an incident when the monitor goes down.",
 			},
-			"escalation_policy_id": optIntA("The escalation policy an incident follows (see the `tailcove_escalation_policy` data source)."),
-			"client_group_id":      optIntA("The client group the monitor belongs to."),
+			"escalation_policy_id": optStrA("The id of the escalation policy an incident follows (`pol_…`, see the `tailcove_escalation_policy` data source)."),
+			"client_group_id":      optStrA("The id of the client group the monitor belongs to (`cg_…`)."),
 			"channels":             channelsAttribute(),
 			"state":                schema.StringAttribute{Computed: true, Description: "`up`, `down` or `unknown`."},
 			"ping_url": schema.StringAttribute{
@@ -161,8 +160,8 @@ func (m monitorModel) body() map[string]any {
 		"min_regions_down":     optInt(m.MinRegionsDown),
 		"is_active":            optBool(m.IsActive),
 		"create_incident":      optBool(m.CreateIncident),
-		"escalation_policy_id": optInt(m.EscalationPolicyID),
-		"client_group_id":      optInt(m.ClientGroupID),
+		"escalation_policy_id": optStr(m.EscalationPolicyID),
+		"client_group_id":      optStr(m.ClientGroupID),
 		"channels":             m.Channels.toAPI(),
 		"regions":              nil,
 		"request_headers":      nil,
@@ -201,7 +200,7 @@ func (m monitorModel) body() map[string]any {
 
 // apply puts what the API says into the model; see refStr for why most attributes only follow when set.
 func (m *monitorModel) apply(a *client.Monitor, importing bool) {
-	m.ID = types.Int64Value(a.ID)
+	m.ID = types.StringValue(a.ID)
 	m.Name = types.StringValue(a.Name)
 	m.Type = types.StringValue(a.Type)
 	m.URL = refStr(m.URL, a.URL, importing)
@@ -219,8 +218,8 @@ func (m *monitorModel) apply(a *client.Monitor, importing bool) {
 	m.MaxRunSeconds = refInt(m.MaxRunSeconds, a.MaxRunSeconds, importing)
 	m.RequestBody = refStr(m.RequestBody, a.RequestBody, importing)
 	m.MinRegionsDown = refInt(m.MinRegionsDown, a.MinRegionsDown, importing)
-	m.EscalationPolicyID = refInt(m.EscalationPolicyID, a.EscalationPolicyID, importing)
-	m.ClientGroupID = refInt(m.ClientGroupID, a.ClientGroupID, importing)
+	m.EscalationPolicyID = refStr(m.EscalationPolicyID, a.EscalationPolicyID, importing)
+	m.ClientGroupID = refStr(m.ClientGroupID, a.ClientGroupID, importing)
 	m.IsActive = types.BoolValue(a.IsActive)
 	m.CreateIncident = types.BoolValue(a.CreateIncident)
 
@@ -273,7 +272,7 @@ func (r *monitorResource) Read(ctx context.Context, req resource.ReadRequest, re
 		return
 	}
 
-	a, err := r.client.GetMonitor(ctx, state.ID.ValueInt64())
+	a, err := r.client.GetMonitor(ctx, state.ID.ValueString())
 	if errors.Is(err, client.ErrNotFound) {
 		resp.State.RemoveResource(ctx)
 		return
@@ -293,7 +292,7 @@ func (r *monitorResource) Update(ctx context.Context, req resource.UpdateRequest
 		return
 	}
 
-	a, err := r.client.UpdateMonitor(ctx, plan.ID.ValueInt64(), plan.body())
+	a, err := r.client.UpdateMonitor(ctx, plan.ID.ValueString(), plan.body())
 	if err != nil {
 		addAPIError(&resp.Diagnostics, "Could not update the monitor", err)
 		return
@@ -308,7 +307,7 @@ func (r *monitorResource) Delete(ctx context.Context, req resource.DeleteRequest
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	if err := r.client.DeleteMonitor(ctx, state.ID.ValueInt64()); err != nil && !errors.Is(err, client.ErrNotFound) {
+	if err := r.client.DeleteMonitor(ctx, state.ID.ValueString()); err != nil && !errors.Is(err, client.ErrNotFound) {
 		addAPIError(&resp.Diagnostics, "Could not delete the monitor", err)
 	}
 }
