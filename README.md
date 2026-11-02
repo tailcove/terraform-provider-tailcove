@@ -73,9 +73,14 @@ sources needs `sources:read` as well.
 
 ## Resources and data sources
 
-- `tailcove_source`: resource, imported by `id`.
+Every id is an opaque string Tailcove issued: a prefix for what the thing is and a ULID, such as
+`src_01jbx5q8k7m3n2p4r6s8t0v1w3` for a source, `mon_…` for a monitor, `alr_…` for an alert, `pol_…` for an escalation
+policy and `cg_…` for a client group. Copy an id from the app or the API; never type a number. (Before 1.0 ids were
+numbers: a state or an import written with a number has to be imported again with the id the app shows.)
+
+- `tailcove_source`: resource, imported by `id` (`terraform import tailcove_source.web src_…`).
 - `tailcove_monitor`: resource, imported by `id`.
-- `tailcove_alert`: resource, imported by `source_id/alert_id`.
+- `tailcove_alert`: resource, imported by `source_id/alert_id` (`src_…/alr_…`).
 - `tailcove_source`: data source, found by `id` or `name`.
 - `tailcove_escalation_policy`: data source, found by `name`.
 - `tailcove_oncall_schedule`: data source, found by `name`.

@@ -43,11 +43,11 @@ func NewSourceDataSource() datasource.DataSource { return &sourceDataSource{} }
 type sourceDataSource struct{ client *client.Client }
 
 type sourceDataModel struct {
-	ID            types.Int64  `tfsdk:"id"`
+	ID            types.String `tfsdk:"id"`
 	Name          types.String `tfsdk:"name"`
 	Platform      types.String `tfsdk:"platform"`
 	RetentionDays types.Int64  `tfsdk:"retention_days"`
-	ClientGroupID types.Int64  `tfsdk:"client_group_id"`
+	ClientGroupID types.String `tfsdk:"client_group_id"`
 }
 
 func (d *sourceDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -58,11 +58,11 @@ func (d *sourceDataSource) Schema(_ context.Context, _ datasource.SchemaRequest,
 	resp.Schema = schema.Schema{
 		Description: "A source that already exists, by id or by name. The token needs `sources:read`.",
 		Attributes: map[string]schema.Attribute{
-			"id":              schema.Int64Attribute{Optional: true, Computed: true, Description: "The source's id. Set this or `name`."},
+			"id":              schema.StringAttribute{Optional: true, Computed: true, Description: "The source's id (`src_…`). Set this or `name`."},
 			"name":            schema.StringAttribute{Optional: true, Computed: true, Description: "The source's name. Set this or `id`."},
 			"platform":        schema.StringAttribute{Computed: true},
 			"retention_days":  schema.Int64Attribute{Computed: true},
-			"client_group_id": schema.Int64Attribute{Computed: true},
+			"client_group_id": schema.StringAttribute{Computed: true},
 		},
 	}
 }
@@ -86,7 +86,7 @@ func (d *sourceDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 
 	var s *client.Source
 	if !cfg.ID.IsNull() {
-		got, err := d.client.GetSource(ctx, cfg.ID.ValueInt64())
+		got, err := d.client.GetSource(ctx, cfg.ID.ValueString())
 		if err != nil {
 			addAPIError(&resp.Diagnostics, "Could not read the source", err)
 			return
@@ -107,11 +107,11 @@ func (d *sourceDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 	}
 
 	out := sourceDataModel{
-		ID:            types.Int64Value(s.ID),
+		ID:            types.StringValue(s.ID),
 		Name:          types.StringValue(s.Name),
 		Platform:      strOrNull(s.Platform),
 		RetentionDays: types.Int64Value(s.RetentionDays),
-		ClientGroupID: intOrNull(s.ClientGroupID),
+		ClientGroupID: strOrNull(s.ClientGroupID),
 	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &out)...)
 }
@@ -119,7 +119,7 @@ func (d *sourceDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 // --- escalation policy and schedule: the API lists them; the web app edits them ---
 
 type namedDataModel struct {
-	ID   types.Int64  `tfsdk:"id"`
+	ID   types.String `tfsdk:"id"`
 	Name types.String `tfsdk:"name"`
 }
 
@@ -128,7 +128,7 @@ func nameSchema(desc string) schema.Schema {
 		Description: desc,
 		Attributes: map[string]schema.Attribute{
 			"name": schema.StringAttribute{Required: true, Description: "The exact name."},
-			"id":   schema.Int64Attribute{Computed: true},
+			"id":   schema.StringAttribute{Computed: true, Description: "An opaque id."},
 		},
 	}
 }
@@ -167,7 +167,7 @@ func (d *escalationPolicyDataSource) Read(ctx context.Context, req datasource.Re
 		resp.Diagnostics.AddError("Escalation policy not found", err.Error())
 		return
 	}
-	cfg.ID = types.Int64Value(p.ID)
+	cfg.ID = types.StringValue(p.ID)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &cfg)...)
 }
 
@@ -176,7 +176,7 @@ func NewScheduleDataSource() datasource.DataSource { return &scheduleDataSource{
 type scheduleDataSource struct{ client *client.Client }
 
 type scheduleDataModel struct {
-	ID       types.Int64  `tfsdk:"id"`
+	ID       types.String `tfsdk:"id"`
 	Name     types.String `tfsdk:"name"`
 	TimeZone types.String `tfsdk:"time_zone"`
 }
@@ -213,7 +213,7 @@ func (d *scheduleDataSource) Read(ctx context.Context, req datasource.ReadReques
 		resp.Diagnostics.AddError("Schedule not found", err.Error())
 		return
 	}
-	cfg.ID = types.Int64Value(s.ID)
+	cfg.ID = types.StringValue(s.ID)
 	cfg.TimeZone = types.StringValue(s.TimeZone)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &cfg)...)
 }

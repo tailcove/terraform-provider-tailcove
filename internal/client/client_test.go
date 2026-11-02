@@ -37,14 +37,14 @@ func TestCreateSourceSendsTokenAndKey(t *testing.T) {
 			t.Errorf("body = %v", body)
 		}
 		w.WriteHeader(201)
-		_, _ = w.Write([]byte(`{"data":{"id":7,"name":"web","retentionDays":3,"ingestToken":"abc"}}`))
+		_, _ = w.Write([]byte(`{"data":{"id":"src_01jbx5q8k7m3n2p4r6s8t0v1w3","name":"web","retentionDays":3,"ingestToken":"abc"}}`))
 	})
 
 	s, err := c.CreateSource(context.Background(), map[string]any{"name": "web"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if s.ID != 7 || s.IngestToken != "abc" || s.RetentionDays != 3 {
+	if s.ID != "src_01jbx5q8k7m3n2p4r6s8t0v1w3" || s.IngestToken != "abc" || s.RetentionDays != 3 {
 		t.Fatalf("got %+v", s)
 	}
 }
@@ -54,16 +54,16 @@ func TestPutHasNoIdempotencyKey(t *testing.T) {
 		if r.Header.Get("Idempotency-Key") != "" {
 			t.Errorf("a PUT should not carry a key")
 		}
-		_, _ = w.Write([]byte(`{"data":{"id":7,"name":"web"}}`))
+		_, _ = w.Write([]byte(`{"data":{"id":"src_01jbx5q8k7m3n2p4r6s8t0v1w3","name":"web"}}`))
 	})
-	if _, err := c.UpdateSource(context.Background(), 7, map[string]any{"name": "web"}); err != nil {
+	if _, err := c.UpdateSource(context.Background(), "src_01jbx5q8k7m3n2p4r6s8t0v1w3", map[string]any{"name": "web"}); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestNotFound(t *testing.T) {
 	c := testClient(t, func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(404) })
-	if _, err := c.GetMonitor(context.Background(), 1); !errors.Is(err, ErrNotFound) {
+	if _, err := c.GetMonitor(context.Background(), "mon_01jbx5q8k7m3n2p4r6s8t0v1w3"); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("err = %v", err)
 	}
 }
@@ -98,7 +98,7 @@ func TestRetriesAThrottleWithTheSameKey(t *testing.T) {
 			t.Errorf("the retry used another key")
 		}
 		w.WriteHeader(201)
-		_, _ = w.Write([]byte(`{"data":{"id":1,"name":"a"}}`))
+		_, _ = w.Write([]byte(`{"data":{"id":"src_01jbx5q8k7m3n2p4r6s8t0v1w4","name":"a"}}`))
 	})
 	if _, err := c.CreateSource(context.Background(), map[string]any{"name": "a"}); err != nil {
 		t.Fatal(err)
@@ -130,10 +130,10 @@ func TestAlertPathsUseTheSource(t *testing.T) {
 		path = r.URL.Path
 		w.WriteHeader(204)
 	})
-	if err := c.DeleteAlert(context.Background(), 3, 9); err != nil {
+	if err := c.DeleteAlert(context.Background(), "src_01jbx5q8k7m3n2p4r6s8t0v1w3", "alr_01jbx5qb8d2f4h6j8k0m2n4p6q"); err != nil {
 		t.Fatal(err)
 	}
-	if path != "/api/v1/sources/3/alerts/9" {
+	if path != "/api/v1/sources/src_01jbx5q8k7m3n2p4r6s8t0v1w3/alerts/alr_01jbx5qb8d2f4h6j8k0m2n4p6q" {
 		t.Fatalf("path = %s", path)
 	}
 }

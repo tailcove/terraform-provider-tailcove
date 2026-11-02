@@ -3,15 +3,16 @@ package client
 import (
 	"context"
 	"net/http"
+	"net/url"
 )
 
 // Source is a log source. IngestToken is set only in the response to a create.
 type Source struct {
-	ID            int64   `json:"id"`
+	ID            string  `json:"id"`
 	Name          string  `json:"name"`
 	Platform      *string `json:"platform"`
 	RetentionDays int64   `json:"retentionDays"`
-	ClientGroupID *int64  `json:"clientGroupId"`
+	ClientGroupID *string `json:"clientGroupId"`
 	IngestToken   string  `json:"ingestToken"`
 }
 
@@ -22,7 +23,7 @@ type Header struct {
 
 // Monitor is an uptime monitor of any type; a field its type does not use is null.
 type Monitor struct {
-	ID                 int64          `json:"id"`
+	ID                 string         `json:"id"`
 	Name               string         `json:"name"`
 	Type               string         `json:"type"`
 	URL                *string        `json:"url"`
@@ -44,17 +45,17 @@ type Monitor struct {
 	TimeoutMs          *int64         `json:"timeoutMs"`
 	IsActive           bool           `json:"isActive"`
 	CreateIncident     bool           `json:"createIncident"`
-	EscalationPolicyID *int64         `json:"escalationPolicyId"`
+	EscalationPolicyID *string        `json:"escalationPolicyId"`
 	State              string         `json:"state"`
 	Channels           map[string]any `json:"channels"`
 	CreatedAt          *string        `json:"createdAt"`
-	ClientGroupID      *int64         `json:"clientGroupId"`
+	ClientGroupID      *string        `json:"clientGroupId"`
 }
 
 // Alert is an alert of a source.
 type Alert struct {
-	ID                 int64          `json:"id"`
-	SourceID           int64          `json:"sourceId"`
+	ID                 string         `json:"id"`
+	SourceID           string         `json:"sourceId"`
 	Name               string         `json:"name"`
 	Type               string         `json:"type"`
 	MetricName         *string        `json:"metricName"`
@@ -71,13 +72,13 @@ type Alert struct {
 	Channels           map[string]any `json:"channels"`
 	IsActive           bool           `json:"isActive"`
 	CreateIncident     bool           `json:"createIncident"`
-	EscalationPolicyID *int64         `json:"escalationPolicyId"`
+	EscalationPolicyID *string        `json:"escalationPolicyId"`
 	CreatedAt          *string        `json:"createdAt"`
 }
 
 // EscalationPolicy is read-only here: the API lists policies, the web app edits them.
 type EscalationPolicy struct {
-	ID          int64  `json:"id"`
+	ID          string `json:"id"`
 	Name        string `json:"name"`
 	Steps       int64  `json:"steps"`
 	RepeatCount int64  `json:"repeatCount"`
@@ -85,7 +86,7 @@ type EscalationPolicy struct {
 
 // Schedule is an on-call schedule (read-only here).
 type Schedule struct {
-	ID       int64  `json:"id"`
+	ID       string `json:"id"`
 	Name     string `json:"name"`
 	TimeZone string `json:"timeZone"`
 }
@@ -94,7 +95,7 @@ func (c *Client) ListSources(ctx context.Context) ([]Source, error) {
 	return get[[]Source](ctx, c, "/sources")
 }
 
-func (c *Client) GetSource(ctx context.Context, id int64) (*Source, error) {
+func (c *Client) GetSource(ctx context.Context, id string) (*Source, error) {
 	s, err := get[Source](ctx, c, "/sources/"+idPath(id))
 	return &s, err
 }
@@ -104,16 +105,16 @@ func (c *Client) CreateSource(ctx context.Context, body map[string]any) (*Source
 	return &s, err
 }
 
-func (c *Client) UpdateSource(ctx context.Context, id int64, body map[string]any) (*Source, error) {
+func (c *Client) UpdateSource(ctx context.Context, id string, body map[string]any) (*Source, error) {
 	s, err := send[Source](ctx, c, http.MethodPut, "/sources/"+idPath(id), body)
 	return &s, err
 }
 
-func (c *Client) DeleteSource(ctx context.Context, id int64) error {
+func (c *Client) DeleteSource(ctx context.Context, id string) error {
 	return c.do(ctx, http.MethodDelete, "/sources/"+idPath(id), nil, nil)
 }
 
-func (c *Client) GetMonitor(ctx context.Context, id int64) (*Monitor, error) {
+func (c *Client) GetMonitor(ctx context.Context, id string) (*Monitor, error) {
 	m, err := get[Monitor](ctx, c, "/monitors/"+idPath(id))
 	return &m, err
 }
@@ -123,31 +124,31 @@ func (c *Client) CreateMonitor(ctx context.Context, body map[string]any) (*Monit
 	return &m, err
 }
 
-func (c *Client) UpdateMonitor(ctx context.Context, id int64, body map[string]any) (*Monitor, error) {
+func (c *Client) UpdateMonitor(ctx context.Context, id string, body map[string]any) (*Monitor, error) {
 	m, err := send[Monitor](ctx, c, http.MethodPut, "/monitors/"+idPath(id), body)
 	return &m, err
 }
 
-func (c *Client) DeleteMonitor(ctx context.Context, id int64) error {
+func (c *Client) DeleteMonitor(ctx context.Context, id string) error {
 	return c.do(ctx, http.MethodDelete, "/monitors/"+idPath(id), nil, nil)
 }
 
-func (c *Client) GetAlert(ctx context.Context, sourceID, id int64) (*Alert, error) {
+func (c *Client) GetAlert(ctx context.Context, sourceID, id string) (*Alert, error) {
 	a, err := get[Alert](ctx, c, "/sources/"+idPath(sourceID)+"/alerts/"+idPath(id))
 	return &a, err
 }
 
-func (c *Client) CreateAlert(ctx context.Context, sourceID int64, body map[string]any) (*Alert, error) {
+func (c *Client) CreateAlert(ctx context.Context, sourceID string, body map[string]any) (*Alert, error) {
 	a, err := send[Alert](ctx, c, http.MethodPost, "/sources/"+idPath(sourceID)+"/alerts", body)
 	return &a, err
 }
 
-func (c *Client) UpdateAlert(ctx context.Context, sourceID, id int64, body map[string]any) (*Alert, error) {
+func (c *Client) UpdateAlert(ctx context.Context, sourceID, id string, body map[string]any) (*Alert, error) {
 	a, err := send[Alert](ctx, c, http.MethodPut, "/sources/"+idPath(sourceID)+"/alerts/"+idPath(id), body)
 	return &a, err
 }
 
-func (c *Client) DeleteAlert(ctx context.Context, sourceID, id int64) error {
+func (c *Client) DeleteAlert(ctx context.Context, sourceID, id string) error {
 	return c.do(ctx, http.MethodDelete, "/sources/"+idPath(sourceID)+"/alerts/"+idPath(id), nil, nil)
 }
 
@@ -159,4 +160,4 @@ func (c *Client) ListSchedules(ctx context.Context) ([]Schedule, error) {
 	return get[[]Schedule](ctx, c, "/oncall/schedules")
 }
 
-func idPath(n int64) string { return id(n) }
+func idPath(id string) string { return url.PathEscape(id) }
