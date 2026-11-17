@@ -17,7 +17,7 @@ import (
 )
 
 // DefaultEndpoint is the hosted Tailcove app.
-const DefaultEndpoint = "https://app.tailcove.dev"
+const DefaultEndpoint = "https://tailcove.dev"
 
 // ErrNotFound is returned for a 404: the thing is gone, or it belongs to another team.
 var ErrNotFound = errors.New("not found")

@@ -2,7 +2,7 @@
 
 <p align="center">
   <a href="https://tailcove.dev/docs/terraform">Documentation</a> &nbsp;·&nbsp;
-  <a href="https://app.tailcove.dev/register">Get started free</a> &nbsp;·&nbsp;
+  <a href="https://tailcove.dev/register">Get started free</a> &nbsp;·&nbsp;
   <a href="https://github.com/tailcove/terraform-provider-tailcove">View on GitHub</a> &nbsp;·&nbsp;
   <a href="https://github.com/tailcove/terraform-provider-tailcove/issues/new/choose">Report a bug</a>
 </p>
@@ -62,7 +62,7 @@ A full example is in [`examples/complete`](examples/complete/main.tf).
 
 ## Provider
 
-- `endpoint`: environment variable `TAILCOVE_ENDPOINT`, default `https://app.tailcove.dev`.
+- `endpoint`: environment variable `TAILCOVE_ENDPOINT`, default `https://tailcove.dev`.
 - `token`: environment variable `TAILCOVE_TOKEN`, required.
 
 The token is an API token from **Settings, API tokens**. It acts for the team it was made for, as its owner, so one
@@ -168,7 +168,7 @@ Something wrong or missing? [Open an issue](https://github.com/tailcove/terrafor
 
 <p align="center">
   <a href="https://tailcove.dev/docs/terraform">Documentation</a> &nbsp;·&nbsp;
-  <a href="https://app.tailcove.dev/register">Get started free</a> &nbsp;·&nbsp;
+  <a href="https://tailcove.dev/register">Get started free</a> &nbsp;·&nbsp;
   <a href="https://github.com/tailcove/terraform-provider-tailcove/issues/new/choose">Report a bug</a> &nbsp;·&nbsp;
   <a href="LICENSE">MIT License</a>
 </p>
