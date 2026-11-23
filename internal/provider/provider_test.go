@@ -142,7 +142,7 @@ resource "tailcove_monitor" "site" {
   request_headers  = { "X-Token" = "s3cret" }
   %s
   channels = {
-    mail  = { to = ["ops@example.com"] }
+    mail  = { members = true }
     slack = { webhook_url = "https://hooks.slack.com/services/T000/B000/XXXX" }
   }
 }`, interval, extra)
@@ -159,7 +159,7 @@ resource "tailcove_monitor" "site" {
 					resource.TestCheckResourceAttr("tailcove_monitor.site", "create_incident", "false"),
 					resource.TestCheckResourceAttr("tailcove_monitor.site", "interval_seconds", "300"),
 					resource.TestCheckResourceAttr("tailcove_monitor.site", "state", "unknown"),
-					resource.TestCheckResourceAttr("tailcove_monitor.site", "channels.mail.to.0", "ops@example.com"),
+					resource.TestCheckResourceAttr("tailcove_monitor.site", "channels.mail.members", "true"),
 					resource.TestCheckNoResourceAttr("tailcove_monitor.site", "keyword"),
 				),
 			},
@@ -210,7 +210,7 @@ resource "tailcove_monitor" "job" {
   grace_seconds    = 3600
   %s
   channels = {
-    mail = { to = ["ops@example.com"] }
+    mail = { members = true }
   }
 }`, extra)
 	}
@@ -269,7 +269,7 @@ func TestMonitorValidationErrorIsShown(t *testing.T) {
 			Config: providerConfig(url) + `
 resource "tailcove_monitor" "bad" {
   name = "bad"
-  channels = { mail = { to = ["a@example.com"] } }
+  channels = { mail = { members = true } }
 }`,
 			ExpectError: regexp.MustCompile(`url: The url field is\s+required`),
 		}},
@@ -311,7 +311,7 @@ resource "tailcove_alert" "errors" {
   cooldown_minutes = 30
   channels = {
     pagerduty = { routing_key = "R0123456789012345678901234567890AB" }
-    mail      = { to = ["ops@example.com"] }
+    mail      = { members = true }
   }
 }`, threshold)
 	}
@@ -363,7 +363,7 @@ resource "tailcove_alert" "errors" {
   threshold_count  = 1
   window_minutes   = 5
   cooldown_minutes = 5
-  channels = { mail = { to = ["ops@example.com"] } }
+  channels = { mail = { members = true } }
 }`
 
 	resource.UnitTest(t, resource.TestCase{

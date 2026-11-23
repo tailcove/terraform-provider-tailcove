@@ -54,7 +54,7 @@ resource "tailcove_monitor" "site" {
   expected_status  = 200
   interval_seconds = 60
   timeout_ms       = 10000
-  channels = { mail = { to = ["ops@example.com"] } }
+  channels = { mail = { members = true } }
 }
 ```
 
