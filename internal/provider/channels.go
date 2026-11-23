@@ -8,7 +8,8 @@ import (
 
 // channelsModel is the `channels` block of an alert or a monitor. At least one channel is required.
 type channelsModel struct {
-	Mail      *mailModel      `tfsdk:"mail"`
+	Mail      *memberModel    `tfsdk:"mail"`
+	Sms       *memberModel    `tfsdk:"sms"`
 	Slack     *hookModel      `tfsdk:"slack"`
 	Discord   *hookModel      `tfsdk:"discord"`
 	Teams     *hookModel      `tfsdk:"teams"`
@@ -19,8 +20,10 @@ type channelsModel struct {
 	Opsgenie  *opsgenieModel  `tfsdk:"opsgenie"`
 }
 
-type mailModel struct {
-	To []types.String `tfsdk:"to"`
+// memberModel is a channel that goes to the team's members who switched it on in their Tailcove profile:
+// it holds no address, only `members = true`.
+type memberModel struct {
+	Members types.Bool `tfsdk:"members"`
 }
 
 type hookModel struct {
@@ -62,17 +65,22 @@ func channelsAttribute() schema.SingleNestedAttribute {
 		}
 	}
 
+	member := func(desc string) schema.SingleNestedAttribute {
+		return schema.SingleNestedAttribute{
+			Optional:    true,
+			Description: desc,
+			Attributes: map[string]schema.Attribute{
+				"members": schema.BoolAttribute{Required: true, Description: "Must be true: the people are chosen by their own profile switch, not listed here.", Validators: []validator.Bool{mustBeTrue{}}},
+			},
+		}
+	}
+
 	return schema.SingleNestedAttribute{
 		Required:    true,
 		Description: "Where a notification goes. Set at least one channel. Every URL is checked by Tailcove's outbound guard: it must be public.",
 		Attributes: map[string]schema.Attribute{
-			"mail": schema.SingleNestedAttribute{
-				Optional:    true,
-				Description: "Email, up to 10 recipients.",
-				Attributes: map[string]schema.Attribute{
-					"to": schema.ListAttribute{Required: true, ElementType: types.StringType, Description: "Recipient addresses."},
-				},
-			},
+			"mail":    member("Email to every team member who has email alerts on in their Tailcove profile."),
+			"sms":     member("A text to every team member who has SMS alerts on and a verified phone (Pro and Business). Each text counts toward the team's monthly SMS."),
 			"slack":   hook("Slack incoming webhook."),
 			"discord": hook("Discord webhook."),
 			"teams":   hook("Microsoft Teams webhook (https)."),
@@ -119,11 +127,10 @@ func channelsAttribute() schema.SingleNestedAttribute {
 func (c channelsModel) toAPI() map[string]any {
 	out := map[string]any{}
 	if c.Mail != nil {
-		to := make([]string, 0, len(c.Mail.To))
-		for _, a := range c.Mail.To {
-			to = append(to, a.ValueString())
-		}
-		out["mail"] = map[string]any{"to": to}
+		out["mail"] = map[string]any{"members": true}
+	}
+	if c.Sms != nil {
+		out["sms"] = map[string]any{"members": true}
 	}
 	if c.Slack != nil {
 		out["slack"] = map[string]any{"webhook_url": c.Slack.WebhookURL.ValueString()}
@@ -167,18 +174,12 @@ func (c *channelsModel) refresh(api map[string]any, importing bool) {
 		return types.StringNull()
 	}
 
-	if m, ok := has("mail"); ok && (importing || c.Mail != nil) {
-		var to []types.String
-		if list, ok := m["to"].([]any); ok {
-			for _, a := range list {
-				if s, ok := a.(string); ok {
-					to = append(to, types.StringValue(s))
-				}
-			}
+	for name, target := range map[string]**memberModel{"mail": &c.Mail, "sms": &c.Sms} {
+		if _, ok := has(name); ok && (importing || *target != nil) {
+			*target = &memberModel{Members: types.BoolValue(true)}
+		} else if !ok {
+			*target = nil
 		}
-		c.Mail = &mailModel{To: to}
-	} else if !ok {
-		c.Mail = nil
 	}
 
 	for name, target := range map[string]**hookModel{"slack": &c.Slack, "discord": &c.Discord, "teams": &c.Teams} {

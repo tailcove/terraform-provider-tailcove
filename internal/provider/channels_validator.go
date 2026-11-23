@@ -27,5 +27,19 @@ func (atLeastOneChannel) ValidateObject(_ context.Context, req validator.ObjectR
 			return
 		}
 	}
-	resp.Diagnostics.AddAttributeError(req.Path, "No channel", "Set at least one of mail, slack, discord, teams, webhook, github, telegram, pagerduty or opsgenie.")
+	resp.Diagnostics.AddAttributeError(req.Path, "No channel", "Set at least one of mail, sms, slack, discord, teams, webhook, github, telegram, pagerduty or opsgenie.")
+}
+
+// mustBeTrue keeps `members = false` out: a member channel is on or absent, never configured as off.
+type mustBeTrue struct{}
+
+func (mustBeTrue) Description(context.Context) string { return "must be true" }
+
+func (v mustBeTrue) MarkdownDescription(ctx context.Context) string { return v.Description(ctx) }
+
+func (mustBeTrue) ValidateBool(_ context.Context, req validator.BoolRequest, resp *validator.BoolResponse) {
+	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() || req.ConfigValue.ValueBool() {
+		return
+	}
+	resp.Diagnostics.AddAttributeError(req.Path, "Members must be true", "Remove the channel to turn it off; who gets it is each member's own switch in their Tailcove profile.")
 }

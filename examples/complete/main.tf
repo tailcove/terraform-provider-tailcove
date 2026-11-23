@@ -35,7 +35,7 @@ resource "tailcove_monitor" "site" {
   escalation_policy_id = data.tailcove_escalation_policy.primary.id
 
   channels = {
-    mail  = { to = ["ops@example.com"] }
+    mail  = { members = true }
     slack = { webhook_url = var.slack_webhook_url }
   }
 }
