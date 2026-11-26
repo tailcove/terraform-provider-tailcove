@@ -1,0 +1,66 @@
+name: Bug report
+description: Something in the Tailcove Terraform provider isn't working as expected.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this. The more detail you give, the faster we can fix it.
+
+        **Never paste your Tailcove API token.** Replace it with `***`, and leave out any other secrets in your configuration or state.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Tell us what you saw, and what you expected to see instead.
+    validations:
+      required: true
+  - type: textarea
+    id: config
+    attributes:
+      label: Configuration
+      description: The smallest Terraform configuration that shows the problem.
+      render: hcl
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: The commands you ran, for example `terraform plan` then `terraform apply`.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Provider version
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: input
+    id: terraform
+    attributes:
+      label: Terraform or OpenTofu version
+      placeholder: "Terraform 1.9.8"
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      placeholder: "macOS 15, arm64"
+  - type: textarea
+    id: logs
+    attributes:
+      label: Errors or output
+      description: The error, and `TF_LOG=DEBUG` output if you have it (check it for secrets first). This is formatted as code automatically.
+      render: shell
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and didn't find a duplicate.
+          required: true
+        - label: I removed any tokens, keys and private data from this report.
+          required: true
