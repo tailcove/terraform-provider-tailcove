@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://tailcove.dev/docs/terraform
+    about: Setup guide, resources and answers to common questions.
+  - name: Security vulnerability
+    url: mailto:security@tailcove.dev
+    about: Please email us privately instead of opening a public issue.
